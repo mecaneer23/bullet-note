@@ -10,6 +10,12 @@ FILENAME = (
     if not Path(FILESTRING).is_file()
     else Path(FILESTRING)
 )
+AUTOSAVE = True
+
+
+class FileValidationError(Exception):
+    pass
+
 
 class BulletPoint:
     def __init__(self, text, indentation_level):
@@ -45,20 +51,29 @@ def get_args():
             Default is `{FILENAME}`.",
     )
     parser.add_argument(
+        "--autosave",
+        "-a",
+        action="store_true",
+        default=AUTOSAVE,
+        help="Boolean: determines if file is saved on every\
+            action or only once at the program termination.",
+    )
+    parser.add_argument(
         "--indentation-level",
         "-i",
         type=int,
         default=INDENT,
         help=f"Allows specification of indentation level\
-            default is `{INDENT}`."
+            default is `{INDENT}`.",
     )
     return parser.parse_args()
 
 
 def handle_args(args):
-    global INDENT, FILENAME
+    global INDENT, FILENAME, AUTOSAVE
     INDENT = args.indentation_level
     FILENAME = Path(args.filename)
+    AUTOSAVE = args.autosave
 
 
 def read_file(filename: Path):
@@ -69,12 +84,27 @@ def read_file(filename: Path):
         return f.read()
 
 
-def validate_file(data):
+def validate_file(data: str):
+    for index, bullet in enumerate(data.split("\n"), start=1):
+        if not bullet.strip().startswith("-"):
+            raise FileValidationError(f"The bullet on line {index} doesn't start with a `-`")
+            # TODO: allow multiline bullets
     return data
 
 
 def print_bullets(stdscr, bullets):
     raise NotImplementedError
+
+
+def update_file(filename, bullets, save=AUTOSAVE):
+    if not save:
+        return 0
+    with filename.open("w") as f:
+        return f.write(bullets)
+
+
+def quit_program(bullets):
+    return update_file(FILENAME, bullets, True)
 
 
 def main(stdscr):
@@ -86,8 +116,17 @@ def main(stdscr):
 
     while True:
         print_bullets(stdscr, bullets)
-
-    raise NotImplementedError
+        try:
+            key = stdscr.getch()
+        except KeyboardInterrupt:  # exit on ^C
+            return quit_program(bullets)
+        if key == 27:  # esc
+            return quit_program(bullets)
+        elif key == 10:  # enter
+            raise NotImplementedError
+        else:
+            continue
+        stdscr.refresh()
 
 
 if __name__ == "__main__":
