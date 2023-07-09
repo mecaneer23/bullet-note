@@ -17,77 +17,58 @@ class FileValidationError(Exception):
     pass
 
 
-class Bullet:
-    def __init__(self, text, indentation_level=None):
-        """
-        Create new Bullet with given text and indentation level. If indentation_level is None, automatically detect indentation level.
-        """
-        self.text = text.strip()[2:]
-        self.indentation_level = indentation_level or self.detect_indentation_level(
-            text
-        )
-
-    def detect_indentation_level(self, raw_text: str) -> int:
-        return (len(raw_text) - len(raw_text.lstrip())) // INDENT
-
-    def format(self):
-        bullet_symbols = [
-            "•",
-            "◦",
-            "▪",
-            # "▫",
-        ]
-        return f"{INDENT * self.indentation_level * ' '}{bullet_symbols[self.indentation_level % len(bullet_symbols)]} {self.text}"
-
-
 class Cursor:
-    def __init__(self, absolute_position, relative_position, current_line):
-        self.abs = absolute_position
+    def __init__(self, relative_position, current_line):
         self.x = relative_position
         self.y = current_line
 
-    def get_current_row(self, bullets):
-        return bullets.split("\n")[self.y]
+    def get_nontext_length(self, bullets):
+        return len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2
 
     def right(self, bullets, characters=1):
-        current_row = self.get_current_row(bullets)
-        characters = ensure_within_bounds(characters, 1, len(current_row) - 1)
+        characters = ensure_within_bounds(characters, 1, len(bullets[self.y]) - 1)
         self.abs += characters
-        if self.x + characters <= len(current_row) - 1:
+        if self.x + characters <= len(bullets[self.y]) - 1:
             self.x += characters
             return
-        if self.y + 1 >= len(bullets.split("\n")):
+        if self.y + 1 >= len(bullets):
             return
         self.y += 1
-        current_row = self.get_current_row(bullets)
-        self.x = max(len(current_row) - len(current_row.lstrip()) + 2, 0)
+        self.x = max(self.get_nontext_length, 0)
 
     def left(self, bullets, characters=1):
-        current_row = self.get_current_row(bullets)
-        characters = ensure_within_bounds(characters, 1, len(current_row) - 1)
+        characters = ensure_within_bounds(characters, 1, len(bullets[self.y]) - 1)
         self.abs -= characters
-        if self.x - characters >= len(current_row) - len(current_row.lstrip()) + 2:
+        if (
+            self.x - characters
+            >= len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2
+        ):
             self.x -= characters
             return
         if self.y - 1 < 0:
             return
         self.y -= 1
-        current_row = self.get_current_row(bullets)
-        self.x = len(current_row) - 1
+        self.x = len(bullets[self.y]) - 1
 
     def up(self, bullets, characters=1):
         if self.y - characters < 0:
             return
         self.y -= characters
-        current_row = self.get_current_row(bullets)
-        self.x = ensure_within_bounds(self.x, len(current_row) - len(current_row.lstrip()) + 2, len(current_row))
+        self.x = ensure_within_bounds(
+            self.x,
+            len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2,
+            len(bullets[self.y]),
+        )
 
     def down(self, bullets, characters=1):
         if self.y + characters >= len(bullets.split("\n")):
             return
         self.y += characters
-        current_row = self.get_current_row(bullets)
-        self.x = ensure_within_bounds(self.x, len(current_row) - len(current_row.lstrip()) + 2, len(current_row))
+        self.x = ensure_within_bounds(
+            self.x,
+            len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2,
+            len(bullets[self.y]),
+        )
 
 
 def ensure_within_bounds(counter: int, minimum: int, maximum: int):
@@ -97,6 +78,22 @@ def ensure_within_bounds(counter: int, minimum: int, maximum: int):
         return maximum - 1
     else:
         return counter
+
+
+def format_bullet(bullet):
+    bullet_symbols = [
+        "•",
+        "◦",
+        "▪",
+        # "▫",
+    ]
+    indentation_level = (len(bullet) - len(bullet.lstrip())) // INDENT
+    return "".join([
+        INDENT * indentation_level * " ",
+        bullet_symbols[indentation_level % len(bullet_symbols)],
+        " ",
+        bullet.strip()[2:],
+    ])
 
 
 def get_args():
@@ -163,7 +160,7 @@ def validate_file(data: str):
                 f"The bullet on line {index} doesn't start with a `-`"
             )
             # TODO: allow multiline bullets
-    return data
+    return data.split("\n")
 
 
 def make_printable_sublist(height: int, lst: list, cursor: int):
@@ -183,22 +180,31 @@ def make_printable_sublist(height: int, lst: list, cursor: int):
 
 def print_bullets(stdscr, bullets, cursor: Cursor):
     bullets_list, _ = make_printable_sublist(
-        stdscr.getmaxyx()[0] - 1, bullets.split("\n"), cursor.y
+        stdscr.getmaxyx()[0] - 1, bullets, cursor.y
     )
     for row, bullet in enumerate(bullets_list):
-        for col, char in enumerate(Bullet(bullet).format()):
-            stdscr.addstr(row, col, char, curses.A_REVERSE if row == cursor.y and col == cursor.x else 0)
+        for col, char in enumerate(format_bullet(bullet)):
+            stdscr.addstr(
+                row,
+                col,
+                char,
+                curses.A_REVERSE if row == cursor.y and col == cursor.x else 0,
+            )
 
 
 def update_file(filename, bullets, save=AUTOSAVE):
     if not save:
         return 0
     with filename.open("w") as f:
-        return f.write(bullets)
+        return f.write("\n".join(bullets))
 
 
 def quit_program(bullets):
     return update_file(FILENAME, bullets, True)
+
+
+def add_bullet(bullets, cursor):
+    raise NotImplementedError
 
 
 def main(stdscr):
@@ -217,7 +223,7 @@ def main(stdscr):
         if key in (27, 3):  # esc | ^C
             return quit_program(bullets)
         elif key == 10:  # enter
-            raise NotImplementedError
+            bullets = add_bullet(bullets, cursor)
         elif key == 259:  # up
             cursor.up(bullets)
         elif key == 258:  # down
