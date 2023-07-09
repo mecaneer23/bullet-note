@@ -17,10 +17,27 @@ class FileValidationError(Exception):
     pass
 
 
-class BulletPoint:
-    def __init__(self, text, indentation_level):
-        self.text = text
-        self.indentation_level = indentation_level
+class Bullet:
+    def __init__(self, text, indentation_level=None):
+        """
+        Create new Bullet with given text and indentation level. If indentation_level is None, automatically detect indentation level.
+        """
+        self.text = text.strip()[2:]
+        self.indentation_level = indentation_level or self.detect_indentation_level(
+            text
+        )
+
+    def detect_indentation_level(self, raw_text: str) -> int:
+        return (len(raw_text) - len(raw_text.lstrip())) // INDENT
+
+    def format(self):
+        bullet_symbols = [
+            "•",
+            "◦",
+            "▪",
+            # "▫",
+        ]
+        return f"{INDENT * self.indentation_level * ' '}{bullet_symbols[self.indentation_level % len(bullet_symbols)]} {self.text}"
 
 
 class Cursor:
@@ -87,8 +104,12 @@ def read_file(filename: Path):
 
 def validate_file(data: str):
     for index, bullet in enumerate(data.split("\n"), start=1):
+        if not bullet:
+            continue
         if not bullet.strip().startswith("-"):
-            raise FileValidationError(f"The bullet on line {index} doesn't start with a `-`")
+            raise FileValidationError(
+                f"The bullet on line {index} doesn't start with a `-`"
+            )
             # TODO: allow multiline bullets
     return data
 
@@ -109,9 +130,11 @@ def make_printable_sublist(height: int, lst: list, cursor: int):
 
 
 def print_bullets(stdscr, bullets, cursor: Cursor):
-    bullets_list, _ = make_printable_sublist(stdscr.getmaxyx()[0] - 1, bullets.split("\n"), cursor.y)
+    bullets_list, _ = make_printable_sublist(
+        stdscr.getmaxyx()[0] - 1, bullets.split("\n"), cursor.y
+    )
     for i, v in enumerate(bullets_list):
-        stdscr.addstr(i, 0, v)
+        stdscr.addstr(i, 0, Bullet(v).format())
 
 
 def update_file(filename, bullets, save=AUTOSAVE):
