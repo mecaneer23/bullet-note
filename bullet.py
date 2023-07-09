@@ -26,7 +26,7 @@ class Cursor:
         return len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2
 
     def right(self, bullets, characters=1):
-        characters = ensure_within_bounds(characters, 1, len(bullets[self.y]) - 1)
+        characters = clamp(characters, 1, len(bullets[self.y]) - 1)
         if self.x + characters <= len(bullets[self.y]) - 1:
             self.x += characters
             return
@@ -36,7 +36,7 @@ class Cursor:
         self.x = max(self.get_nontext_length(bullets), 0)
 
     def left(self, bullets, characters=1):
-        characters = ensure_within_bounds(characters, 1, len(bullets[self.y]) - 1)
+        characters = clamp(characters, 1, len(bullets[self.y]) - 1)
         if self.x - characters >= self.get_nontext_length(bullets):
             self.x -= characters
             return
@@ -49,7 +49,7 @@ class Cursor:
         if self.y - characters < 0:
             return
         self.y -= characters
-        self.x = ensure_within_bounds(
+        self.x = clamp(
             self.x,
             self.get_nontext_length(bullets),
             len(bullets[self.y]),
@@ -59,20 +59,15 @@ class Cursor:
         if self.y + characters >= len(bullets):
             return
         self.y += characters
-        self.x = ensure_within_bounds(
+        self.x = clamp(
             self.x,
             self.get_nontext_length(bullets),
             len(bullets[self.y]),
         )
 
 
-def ensure_within_bounds(counter: int, minimum: int, maximum: int):
-    if counter < minimum:
-        return minimum
-    elif counter > maximum - 1:
-        return maximum - 1
-    else:
-        return counter
+def clamp(counter: int, minimum: int, maximum: int):
+    return min(max(counter, minimum), maximum - 1)
 
 
 def format_bullet(bullet):
