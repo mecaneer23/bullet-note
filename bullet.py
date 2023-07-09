@@ -18,31 +18,26 @@ class FileValidationError(Exception):
 
 
 class Cursor:
-    def __init__(self, relative_position, current_line):
+    def __init__(self, relative_position: int, current_line: int):
         self.x = relative_position
         self.y = current_line
 
-    def get_nontext_length(self, bullets):
+    def get_nontext_length(self, bullets: list):
         return len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2
 
     def right(self, bullets, characters=1):
         characters = ensure_within_bounds(characters, 1, len(bullets[self.y]) - 1)
-        self.abs += characters
         if self.x + characters <= len(bullets[self.y]) - 1:
             self.x += characters
             return
         if self.y + 1 >= len(bullets):
             return
         self.y += 1
-        self.x = max(self.get_nontext_length, 0)
+        self.x = max(self.get_nontext_length(bullets), 0)
 
     def left(self, bullets, characters=1):
         characters = ensure_within_bounds(characters, 1, len(bullets[self.y]) - 1)
-        self.abs -= characters
-        if (
-            self.x - characters
-            >= len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2
-        ):
+        if self.x - characters >= self.get_nontext_length(bullets):
             self.x -= characters
             return
         if self.y - 1 < 0:
@@ -56,17 +51,17 @@ class Cursor:
         self.y -= characters
         self.x = ensure_within_bounds(
             self.x,
-            len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2,
+            self.get_nontext_length(bullets),
             len(bullets[self.y]),
         )
 
     def down(self, bullets, characters=1):
-        if self.y + characters >= len(bullets.split("\n")):
+        if self.y + characters >= len(bullets):
             return
         self.y += characters
         self.x = ensure_within_bounds(
             self.x,
-            len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2,
+            self.get_nontext_length(bullets),
             len(bullets[self.y]),
         )
 
@@ -88,12 +83,14 @@ def format_bullet(bullet):
         # "▫",
     ]
     indentation_level = (len(bullet) - len(bullet.lstrip())) // INDENT
-    return "".join([
-        INDENT * indentation_level * " ",
-        bullet_symbols[indentation_level % len(bullet_symbols)],
-        " ",
-        bullet.strip()[2:],
-    ])
+    return "".join(
+        [
+            INDENT * indentation_level * " ",
+            bullet_symbols[indentation_level % len(bullet_symbols)],
+            " ",
+            bullet.strip()[2:],
+        ]
+    )
 
 
 def get_args():
@@ -212,7 +209,7 @@ def main(stdscr):
     curses.curs_set(0)
 
     bullets = validate_file(read_file(FILENAME))
-    cursor = Cursor(2, 2, 0)
+    cursor = Cursor(2, 0)
 
     while True:
         print_bullets(stdscr, bullets, cursor)
