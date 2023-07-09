@@ -23,7 +23,7 @@ class Cursor:
         self.y = current_line
 
     def get_nontext_length(self, bullets: list):
-        return len(bullets[self.y]) - len(bullets[self.y].lstrip()) + 2
+        return get_whitespace_len(bullets[self.y]) + 2
 
     def right(self, bullets, characters=1):
         characters = clamp(characters, 1, len(bullets[self.y]) - 1)
@@ -66,25 +66,25 @@ class Cursor:
         )
 
 
+def get_whitespace_len(bullet):
+    return len(bullet) - len(bullet.lstrip())
+
+
 def clamp(counter: int, minimum: int, maximum: int):
     return min(max(counter, minimum), maximum - 1)
 
 
-def format_bullet(bullet):
-    bullet_symbols = [
+def format_bullet(bullet: str):
+    symbols = [
         "•",
         "◦",
         "▪",
         # "▫",
     ]
-    indentation_level = (len(bullet) - len(bullet.lstrip())) // INDENT
-    return "".join(
-        [
-            INDENT * indentation_level * " ",
-            bullet_symbols[indentation_level % len(bullet_symbols)],
-            " ",
-            bullet.strip()[2:],
-        ]
+    return bullet.replace(
+        "-",
+        symbols[(len(bullet) - len(bullet.lstrip())) // INDENT % len(symbols)],
+        1,
     )
 
 
@@ -195,8 +195,13 @@ def quit_program(bullets):
     return update_file(FILENAME, bullets, True)
 
 
-def add_bullet(bullets, cursor):
-    raise NotImplementedError
+def add_bullet(bullets: list, cursor):
+    bullets.insert(
+        cursor.y + 1,
+        bullets[cursor.y][: get_whitespace_len(bullets[cursor.y]) + 2] + " ",
+    )
+    cursor.y += 1
+    return bullets
 
 
 def main(stdscr):
@@ -216,6 +221,7 @@ def main(stdscr):
             return quit_program(bullets)
         elif key == 10:  # enter
             bullets = add_bullet(bullets, cursor)
+            stdscr.clear()
         elif key == 259:  # up
             cursor.up(bullets)
         elif key == 258:  # down
