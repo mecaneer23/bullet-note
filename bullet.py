@@ -75,6 +75,20 @@ class Cursor:
         current_row = self.get_current_row(bullets)
         self.x = len(current_row) - 1
 
+    def up(self, bullets, characters=1):
+        if self.y - characters < 0:
+            return
+        self.y -= characters
+        current_row = self.get_current_row(bullets)
+        self.x = ensure_within_bounds(self.x, len(current_row) - len(current_row.lstrip()) + 2, len(current_row))
+
+    def down(self, bullets, characters=1):
+        if self.y + characters >= len(bullets.split("\n")):
+            return
+        self.y += characters
+        current_row = self.get_current_row(bullets)
+        self.x = ensure_within_bounds(self.x, len(current_row) - len(current_row.lstrip()) + 2, len(current_row))
+
 
 def ensure_within_bounds(counter: int, minimum: int, maximum: int):
     if counter < minimum:
@@ -204,12 +218,16 @@ def main(stdscr):
             return quit_program(bullets)
         elif key == 10:  # enter
             raise NotImplementedError
+        elif key == 259:  # up
+            cursor.up(bullets)
+        elif key == 258:  # down
+            cursor.down(bullets)
         elif key == 260:  # left
             cursor.left(bullets)
         elif key == 261:  # right
             cursor.right(bullets)
         else:
-            return 0
+            continue
         stdscr.refresh()
 
 
