@@ -42,9 +42,43 @@ class Bullet:
 
 class Cursor:
     def __init__(self, absolute_position, relative_position, current_line):
-        self.absolute_position = absolute_position
+        self.abs = absolute_position
         self.x = relative_position
         self.y = current_line
+
+    def get_current_row(self, bullets):
+        return bullets.split("\n")[self.y]
+
+    def right(self, bullets, characters=1):
+        current_row = self.get_current_row(bullets)
+        characters = ensure_within_bounds(characters, 1, len(current_row) - 1)
+        self.abs += characters
+        if self.x + characters <= len(current_row) - 1:
+            self.x += characters
+            return
+        self.y += 1
+        current_row = self.get_current_row(bullets)
+        self.x = max(len(current_row) - len(current_row.lstrip()) + 2, 0)
+
+    def left(self, bullets, characters=1):
+        current_row = self.get_current_row(bullets)
+        characters = ensure_within_bounds(characters, 1, len(current_row) - 1)
+        self.abs -= characters
+        if self.x - characters >= 0:
+            self.x -= characters
+            return
+        self.y -= 1
+        current_row = self.get_current_row(bullets)
+        self.x = max(len(current_row) - len(current_row.lstrip()) + 2, 0)
+
+
+def ensure_within_bounds(counter: int, minimum: int, maximum: int):
+    if counter < minimum:
+        return minimum
+    elif counter > maximum - 1:
+        return maximum - 1
+    else:
+        return counter
 
 
 def get_args():
@@ -133,8 +167,9 @@ def print_bullets(stdscr, bullets, cursor: Cursor):
     bullets_list, _ = make_printable_sublist(
         stdscr.getmaxyx()[0] - 1, bullets.split("\n"), cursor.y
     )
-    for i, v in enumerate(bullets_list):
-        stdscr.addstr(i, 0, Bullet(v).format())
+    for row, bullet in enumerate(bullets_list):
+        for col, char in enumerate(Bullet(bullet).format()):
+            stdscr.addstr(row, col, char, curses.A_REVERSE if row == cursor.y and col == cursor.x else 0)
 
 
 def update_file(filename, bullets, save=AUTOSAVE):
@@ -148,12 +183,16 @@ def quit_program(bullets):
     return update_file(FILENAME, bullets, True)
 
 
+def insert_mode(key, bullets):
+    raise NotImplementedError
+
+
 def main(stdscr):
     curses.use_default_colors()
     curses.curs_set(0)
 
     bullets = validate_file(read_file(FILENAME))
-    cursor = Cursor(0, 0, 0)
+    cursor = Cursor(2, 2, 0)
 
     while True:
         print_bullets(stdscr, bullets, cursor)
@@ -165,8 +204,14 @@ def main(stdscr):
             return quit_program(bullets)
         elif key == 10:  # enter
             raise NotImplementedError
+        elif key == 105:  # i
+            insert_mode(key, bullets)
+        elif key == 104:  # h
+            cursor.left(bullets)
+        elif key == 108:  # j
+            cursor.right(bullets)
         else:
-            continue
+            return 0
         stdscr.refresh()
 
 
