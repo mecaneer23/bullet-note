@@ -1,5 +1,5 @@
 +7 render bullets
--3 add mechanism to move cursor along a bullet
++7 add mechanism to move cursor along a bullet
 -7 add mechanism for moving cursor around in 2D
 -7 add <enter> to add a new bullet at same indent level
 -7 add <tab> to add new bullet at indent level + 1

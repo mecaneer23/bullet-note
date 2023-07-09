@@ -56,6 +56,8 @@ class Cursor:
         if self.x + characters <= len(current_row) - 1:
             self.x += characters
             return
+        if self.y + 1 >= len(bullets.split("\n")):
+            return
         self.y += 1
         current_row = self.get_current_row(bullets)
         self.x = max(len(current_row) - len(current_row.lstrip()) + 2, 0)
@@ -64,12 +66,14 @@ class Cursor:
         current_row = self.get_current_row(bullets)
         characters = ensure_within_bounds(characters, 1, len(current_row) - 1)
         self.abs -= characters
-        if self.x - characters >= 0:
+        if self.x - characters >= len(current_row) - len(current_row.lstrip()) + 2:
             self.x -= characters
+            return
+        if self.y - 1 < 0:
             return
         self.y -= 1
         current_row = self.get_current_row(bullets)
-        self.x = max(len(current_row) - len(current_row.lstrip()) + 2, 0)
+        self.x = len(current_row) - 1
 
 
 def ensure_within_bounds(counter: int, minimum: int, maximum: int):
@@ -183,10 +187,6 @@ def quit_program(bullets):
     return update_file(FILENAME, bullets, True)
 
 
-def insert_mode(key, bullets):
-    raise NotImplementedError
-
-
 def main(stdscr):
     curses.use_default_colors()
     curses.curs_set(0)
@@ -204,11 +204,9 @@ def main(stdscr):
             return quit_program(bullets)
         elif key == 10:  # enter
             raise NotImplementedError
-        elif key == 105:  # i
-            insert_mode(key, bullets)
-        elif key == 104:  # h
+        elif key == 260:  # left
             cursor.left(bullets)
-        elif key == 108:  # j
+        elif key == 261:  # right
             cursor.right(bullets)
         else:
             return 0
