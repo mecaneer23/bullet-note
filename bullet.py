@@ -24,9 +24,10 @@ class BulletPoint:
 
 
 class Cursor:
-    def __init__(self, absolute_position, relative_position):
+    def __init__(self, absolute_position, relative_position, current_line):
         self.absolute_position = absolute_position
-        self.relative_position = relative_position
+        self.x = relative_position
+        self.y = current_line
 
 
 def get_args():
@@ -92,8 +93,25 @@ def validate_file(data: str):
     return data
 
 
-def print_bullets(stdscr, bullets):
-    raise NotImplementedError
+def make_printable_sublist(height: int, lst: list, cursor: int):
+    if len(lst) < height:
+        return lst, cursor
+    start = max(0, cursor - height // 2)
+    end = min(len(lst), start + height)
+    if end - start < height:
+        if start == 0:
+            end = min(len(lst), height)
+        else:
+            start = max(0, end - height)
+    sublist = lst[start:end]
+    cursor -= start
+    return sublist, cursor
+
+
+def print_bullets(stdscr, bullets, cursor: Cursor):
+    bullets_list, _ = make_printable_sublist(stdscr.getmaxyx()[0] - 1, bullets.split("\n"), cursor.y)
+    for i, v in enumerate(bullets_list):
+        stdscr.addstr(i, 0, v)
 
 
 def update_file(filename, bullets, save=AUTOSAVE):
@@ -112,15 +130,15 @@ def main(stdscr):
     curses.curs_set(0)
 
     bullets = validate_file(read_file(FILENAME))
-    cursor = Cursor(0, 0)
+    cursor = Cursor(0, 0, 0)
 
     while True:
-        print_bullets(stdscr, bullets)
+        print_bullets(stdscr, bullets, cursor)
         try:
             key = stdscr.getch()
         except KeyboardInterrupt:  # exit on ^C
             return quit_program(bullets)
-        if key == 27:  # esc
+        if key in (27, 3):  # esc | ^C
             return quit_program(bullets)
         elif key == 10:  # enter
             raise NotImplementedError
