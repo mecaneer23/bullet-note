@@ -204,12 +204,31 @@ def add_bullet(bullets: list, cursor):
     return bullets
 
 
+def indent(bullets: list, cursor):
+    bullets[cursor.y] = " " * INDENT + bullets[cursor.y]
+    cursor.x += INDENT
+    return bullets
+
+
+def dedent(bullets: list, cursor):
+    if get_whitespace_len(bullets[cursor.y]) > 0:
+        bullets[cursor.y] = bullets[cursor.y][INDENT:]
+        cursor.x -= INDENT
+    return bullets
+
+
+def delete(bullets: list, cursor):
+    bullets.pop(cursor.y)
+    cursor.y -= 1
+    return bullets
+
+
 def main(stdscr):
     curses.use_default_colors()
     curses.curs_set(0)
 
     bullets = validate_file(read_file(FILENAME))
-    cursor = Cursor(2, 0)
+    cursor = Cursor(get_whitespace_len(bullets[0]) + 2, 0)
 
     while True:
         print_bullets(stdscr, bullets, cursor)
@@ -219,8 +238,17 @@ def main(stdscr):
             return quit_program(bullets)
         if key in (27, 3):  # esc | ^C
             return quit_program(bullets)
+        elif key == 353:  # shift + tab
+            bullets = dedent(bullets, cursor)
+            stdscr.clear()
         elif key == 10:  # enter
             bullets = add_bullet(bullets, cursor)
+            stdscr.clear()
+        elif key == 9:  # tab
+            bullets = indent(bullets, cursor)
+            stdscr.clear()
+        elif key == 4:  # ^D
+            bullets = delete(bullets, cursor)
             stdscr.clear()
         elif key == 259:  # up
             cursor.up(bullets)
