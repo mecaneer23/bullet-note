@@ -258,8 +258,21 @@ def main(stdscr):
             cursor.left(bullets)
         elif key == 261:  # right
             cursor.right(bullets)
-        else:
-            continue
+        elif key in (8, 127, 263):  # backspace
+            if cursor.x <= 0:
+                continue
+            current_row = list(bullets[cursor.y])
+            current_row.pop(cursor.x - 1)
+            bullets[cursor.y] = "".join(current_row)
+            cursor.x -= 1
+            stdscr.clear()
+        else:  # typable characters (basically alphanum)
+            current_row = list(bullets[cursor.y])
+            current_row.insert(cursor.x, chr(key))
+            bullets[cursor.y] = "".join(current_row)
+            if cursor.x < len(bullets[cursor.y]):
+                cursor.x += 1
+            stdscr.clear()
         stdscr.refresh()
 
 
