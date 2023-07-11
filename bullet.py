@@ -236,8 +236,20 @@ def main(stdscr):
             key = stdscr.getch()
         except KeyboardInterrupt:  # exit on ^C
             return quit_program(bullets)
-        if key in (27, 3):  # esc | ^C
+        if key == 3:  # ^C
             return quit_program(bullets)
+        elif key == 27:  # any escape sequence
+            stdscr.nodelay(True)
+            if stdscr.getch() == -1:  # escape, otherwise skip `[`
+                return quit_program(bullets)
+            stdscr.nodelay(False)
+            # try:
+            #     subch = stdscr.getch()
+            # except KeyboardInterrupt:
+            #     return quit_program(bullets)
+            # # set stty -ixon
+            # if subch == 83:  # ^S
+            #     raise NotImplementedError
         elif key == 353:  # shift + tab
             bullets = dedent(bullets, cursor)
             stdscr.clear()
